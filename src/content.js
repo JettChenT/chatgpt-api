@@ -62,7 +62,11 @@ function checkForNewCommands() {
         if (config.streamingMode) {
             const appendedMessage = currentMessage.slice(previousMessage.length).trim();
             //console.log(appendedMessage);
-            sendMessageToWebSocketServer(appendedMessage);
+            sendMessageToWebSocketServer({
+                "type": "message",
+                "streaming": true,
+                "message": appendedMessage
+            });
         }
 
         //update current 
@@ -75,7 +79,11 @@ function checkForNewCommands() {
         if (currentMessage !== lastSentMessage) {
             lastSentMessage = currentMessage;
             //console.log('Most recent received message:', completeMessage);
-            sendMessageToWebSocketServer(lastSentMessage);
+            sendMessageToWebSocketServer({
+                "type": "message",
+                "streaming": false,
+                "message": currentMessage
+            });
         }
     }
 }
@@ -87,6 +95,47 @@ function adjustTextAreaHeight() {
     textarea.style.height = height + 'px';
 }
 
+
+async function ProcMessage(message) {
+    parsed = JSON.parse(message);
+    console.log("ProcMessage : ", parsed);
+    if(parsed['image']){
+        await AddImage(parsed['image'])    
+    }
+    if(parsed['message']){
+        AnswerChatGPT(parsed['message']);
+    }
+}
+
+async function AddImage(image){
+    const dataURL = `data:image/png;base64,${image}`;
+    // Create a blob from the data URL
+    const blob = await fetch(dataURL).then(res => res.blob());
+    var file = new File([blob], 'image.png', {type: 'image/png'});
+    // Now you can use the file object
+    console.log(file);
+    const dataTransfer = new DataTransfer()
+    dataTransfer.items.add(file)
+    const pasteEvent = new ClipboardEvent('paste', {
+        bubbles: true,
+        cancelable: true,
+        clipboardData: dataTransfer,
+    })
+    const txtbox = document.querySelector("#prompt-textarea")
+    txtbox.dispatchEvent(pasteEvent)
+
+    // Wait for the element to be null before proceeding
+    await setTimeout(() => {}, 2000);
+    await new Promise(resolve => {
+        const intervalId = setInterval(() => {
+            const element = document.querySelector("circle[stroke-dashoffset]");
+            if (element == null) {
+                clearInterval(intervalId);
+                resolve();
+            }
+        }, 100);
+    });
+}
 
 function AnswerChatGPT(message) {
     // Fetching the textarea and the sendButton with more specific selector
@@ -221,7 +270,7 @@ function connectWebSocket() {
             }
             else
             {
-                AnswerChatGPT(output);
+                ProcMessage(output);
             }
         });
 
@@ -498,7 +547,7 @@ async function onFeedbackSent() {
 
 function sendMessageToWebSocketServer(message) {
     if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(message);
+        ws.send(JSON.stringify(message));
     } else {
         //console.log('WebSocket is not connected or not in the open state.');
     }
@@ -527,7 +576,10 @@ function startSendingFeedback() {
         }
         else
         {
-            sendMessageToWebSocketServer("_START_NEW");
+            sendMessageToWebSocketServer({
+                "type": "info",
+                "message": "_START_NEW"
+            });
         }
         
     }
@@ -688,7 +740,10 @@ window.addEventListener('message', (event) => {
 
 function stopMonitoringReceivedMessages()
 {
-    sendMessageToWebSocketServer("_STOP_");
+    sendMessageToWebSocketServer({
+        "type": "info",
+        "message": "_STOP_"
+    });
     clearInterval( mostRecentMessagePollingIntervalId);
 
 }
