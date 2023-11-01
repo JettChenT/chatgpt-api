@@ -35,15 +35,17 @@ let ws = null
 let firstPrompt = null;
 let key = null ;
 let isAuthenticated = false;
+let responseSelectCnt = 1;
 
 let textarea = document.querySelector('div.relative.flex > textarea');
 
 let sendButton = null; 
 
 function getMostRecentMessage() {
-    const messageElement = document.querySelector('div.final-completion').querySelector('div.prose');
+    const lastCompletion = document.querySelector(`div[data-testid="conversation-turn-${responseSelectCnt}"]`);
 
-    if (!messageElement) return;
+    if (!lastCompletion) return;
+    const messageElement = lastCompletion.querySelector('div.prose')
 
     return messageElement.innerHTML.trim();
 
@@ -169,6 +171,7 @@ function AnswerChatGPT(message) {
     }
     
     sendButton.click();
+    responseSelectCnt += 2;
     return ;
 }
 
@@ -196,18 +199,6 @@ function notifyConnectionStatus() {
     emitEvent(connectionStatus);
 }
 
-
-function encryptStringAES(message, key) {
-    const iv = CryptoJS.lib.WordArray.random(128/8); // generate a random initialization vector
-    const encrypted = CryptoJS.AES.encrypt(message, CryptoJS.enc.Base64.parse(key), { 
-        iv: iv, 
-        mode: CryptoJS.mode.CBC 
-    });
-
-    // Concatenate the random IV and the cipher text, then convert to a base64 string
-    const encryptedMessage = CryptoJS.enc.Base64.stringify(iv.concat(encrypted.ciphertext));
-    return encryptedMessage;
-}
 
 function extractKey(str) {
     const regex = /^KEY:(.*)$/;
@@ -246,12 +237,6 @@ function connectWebSocket() {
                     key = tempKey;
                     save('funKey', key);
 
-                }
-                else if(key!= null)
-                {
-                    console.log("Authentication question received. Sending Answer");
-                    ws.send( encryptStringAES(CryptoJS.SHA256(output).toString(),key));
-                   
                 }
                 else
                 {
@@ -433,8 +418,6 @@ function emitEvent(name, detail = null) {
 function injectPopup() {
 
     const popupHtml = `
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/crypto-js.min.js"></script>
-
     <div id="popup-container" style="position: fixed; top: 0px; right: 10px; z-index: 9999; background-color: #f5f5f5; padding: 10px; border-radius: 5px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);  width: 140px;">
         <div style="display: flex; align-items: stretch; justify-content: space-between;">
             <div style="display: flex; flex-direction: column; justify-content: center; border: 1px solid #ccc; border-radius: 5px; padding: 5px; background-color: #e0e0e0;">

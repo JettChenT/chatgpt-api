@@ -15,7 +15,7 @@
   "content_scripts": [
     {
       "matches": ["https://chat.openai.com/*"],
-      "js": ["crypto-js.min.js","content.js"],
+      "js": ["content.js"],
       "run_at": "document_end"
     }
   ],
