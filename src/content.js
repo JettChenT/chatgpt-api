@@ -42,6 +42,7 @@ let textarea = document.querySelector('div.relative.flex > textarea');
 let sendButton = null; 
 
 function getMostRecentMessage() {
+    if(responseSelectCnt==1) return;
     const lastCompletion = document.querySelector(`div[data-testid="conversation-turn-${responseSelectCnt}"]`);
 
     if (!lastCompletion) return;
